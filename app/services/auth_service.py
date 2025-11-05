@@ -203,21 +203,28 @@ class AuthService:
     async def search_user_by_pin(self, pin: str) -> dict:
         """Search user by PIN (for starting chats)"""
         try:
-            async with db.get_connection() as conn:
+         async with db.get_connection() as conn:
+            if hasattr(conn, 'fetchrow'):  # PostgreSQL
                 user = await conn.fetchrow(
                     "SELECT id, display_name, user_pin FROM users WHERE user_pin = $1",
                     pin
                 )
-                
-                if not user:
-                    raise HTTPException(status_code=404, detail="User not found")
-                
-                return {
-                    "id": str(user['id']),
-                    "display_name": user['display_name'],
-                    "user_pin": user['user_pin']
-                }
-                
+            else:  # SQLite
+                cursor = conn.execute(
+                    "SELECT id, display_name, user_pin FROM users WHERE user_pin = ?",
+                    (pin,)
+                )
+                user = cursor.fetchone()
+            
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found")
+            
+            return {
+                "id": str(user['id']),
+                "display_name": user['display_name'],
+                "user_pin": user['user_pin']
+            }
+            
         except HTTPException:
             raise
         except Exception as e:
