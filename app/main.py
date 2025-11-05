@@ -1,3 +1,4 @@
+# python_backend/app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
@@ -24,10 +25,15 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     try:
-        db.init_db()
+        await db.init_db()
         print("✅ Database initialized successfully")
     except Exception as e:
         print(f"⚠️ Database initialization warning: {e}")
+
+# Close database on shutdown
+@app.on_event("shutdown")
+async def shutdown_event():
+    await db.close()
 
 # Include routers
 from app.api.auth import router as auth_router
@@ -54,12 +60,4 @@ async def health_check():
         "status": "healthy", 
         "service": "secret-chat-api",
         "database": "postgresql"
-    }
-
-@app.get("/info")
-async def info():
-    return {
-        "name": "Secret Chat API",
-        "version": settings.APP_VERSION,
-        "database": "PostgreSQL (Railway)"
     }
