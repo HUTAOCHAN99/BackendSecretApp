@@ -2,6 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 
+# Import database untuk initialization
+from app.database.database import db
+
 app = FastAPI(
     title="Secret Chat API",
     description="Backend API untuk aplikasi chat rahasia",
@@ -16,6 +19,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Initialize database on startup
+@app.on_event("startup")
+async def startup_event():
+    try:
+        db.init_db()
+        print("✅ Database initialized successfully")
+    except Exception as e:
+        print(f"⚠️ Database initialization warning: {e}")
 
 # Include routers
 from app.api.auth import router as auth_router
@@ -33,17 +45,21 @@ async def root():
     return {
         "message": "Secret Chat API is running!", 
         "version": settings.APP_VERSION,
-        "status": "healthy"
+        "database": "postgresql"
     }
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "secret-chat-api"}
+    return {
+        "status": "healthy", 
+        "service": "secret-chat-api",
+        "database": "postgresql"
+    }
 
 @app.get("/info")
 async def info():
     return {
         "name": "Secret Chat API",
         "version": settings.APP_VERSION,
-        "database": "Supabase"
+        "database": "PostgreSQL (Railway)"
     }
