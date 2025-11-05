@@ -4,15 +4,17 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings:
+    # Supabase Configuration
+    SUPABASE_URL: str = os.getenv("SUPABASE_URL")
+    SUPABASE_KEY: str = os.getenv("SUPABASE_KEY")
+    
     # JWT Configuration
-    JWT_SECRET: str = os.getenv("JWT_SECRET", "your-super-secret-jwt-key")
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    JWT_SECRET: str = os.getenv("JWT_SECRET", "your-fallback-secret-for-development")
     
-    # CORS Origins - allow all for mobile apps
-    ALLOWED_ORIGINS: list = ["*"]
+    # CORS Origins
+    ALLOWED_ORIGINS: list = ["*"]  # Will update for production
     
-    # Database Configuration - SQLite untuk offline
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./secret_chat.db")
+    # App Configuration
+    APP_VERSION: str = "1.0.0"
 
 settings = Settings()
