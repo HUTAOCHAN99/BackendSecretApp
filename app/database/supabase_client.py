@@ -1,60 +1,79 @@
+import sqlite3
 import os
+from contextlib import contextmanager
 import logging
-from supabase import create_client, Client
-from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-class SupabaseManager:
-    _client = None
+class Database:
+    def __init__(self, db_path="/tmp/secret_chat.db"):
+        self.db_path = db_path
+        self._init_db()
+        logger.info("✅ SQLite Database initialized")
     
-    @classmethod
-    def get_client(cls) -> Client:
-        if cls._client is None:
-            cls._client = cls._create_client()
-        return cls._client
+    def _init_db(self):
+        with self.get_connection() as conn:
+            # Create users table
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS users (
+                    id TEXT PRIMARY KEY,
+                    email TEXT UNIQUE NOT NULL,
+                    password TEXT NOT NULL,
+                    display_name TEXT NOT NULL,
+                    user_pin TEXT UNIQUE NOT NULL,
+                    is_verified BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # Create verification_codes table
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS verification_codes (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    code TEXT NOT NULL,
+                    expires_at TIMESTAMP NOT NULL,
+                    used BOOLEAN DEFAULT FALSE,
+                    FOREIGN KEY (user_id) REFERENCES users (id)
+                )
+            ''')
+            
+            # Create chats table
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS chats (
+                    id TEXT PRIMARY KEY,
+                    user1_id TEXT NOT NULL,
+                    user2_id TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user1_id) REFERENCES users (id),
+                    FOREIGN KEY (user2_id) REFERENCES users (id)
+                )
+            ''')
+            
+            # Create messages table
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS messages (
+                    id TEXT PRIMARY KEY,
+                    chat_id TEXT NOT NULL,
+                    sender_id TEXT NOT NULL,
+                    encrypted_message TEXT NOT NULL,
+                    iv TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (chat_id) REFERENCES chats (id),
+                    FOREIGN KEY (sender_id) REFERENCES users (id)
+                )
+            ''')
+            
+            conn.commit()
     
-    @classmethod
-    def _create_client(cls) -> Client:
+    @contextmanager
+    def get_connection(self):
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
         try:
-            if not settings.SUPABASE_URL:
-                raise ValueError("SUPABASE_URL is not set")
-            if not settings.SUPABASE_KEY:
-                raise ValueError("SUPABASE_KEY is not set")
-            
-            # Create client with minimal configuration
-            client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-            
-            # Test connection
-            try:
-                result = client.table('users').select('count', count='exact').limit(1).execute()
-                logger.info("✅ Supabase client created and connected successfully")
-            except Exception as test_error:
-                logger.warning(f"⚠️ Supabase client created but connection test failed: {test_error}")
-            
-            return client
-            
-        except Exception as e:
-            logger.error(f"❌ Failed to create Supabase client: {e}")
-            raise
+            yield conn
+        finally:
+            conn.close()
 
-# Global access function
-def get_supabase_client() -> Client:
-    return SupabaseManager.get_client()
-
-# Initialize client
-try:
-    supabase = get_supabase_client()
-    print("✅ Supabase client initialized successfully")
-except Exception as e:
-    print(f"❌ Supabase client initialization failed: {e}")
-    # Create a mock client for development
-    class MockSupabaseClient:
-        def __getattr__(self, name):
-            def mock_method(*args, **kwargs):
-                print(f"⚠️ Mock Supabase called: {name} with args: {args}")
-                return type('MockResponse', (), {'data': [], 'error': None})()
-            return mock_method
-    
-    supabase = MockSupabaseClient()
-    print("⚠️ Using mock Supabase client - some features may not work")
+# Global instance - INI YANG DIIMPORT
+db = Database()
