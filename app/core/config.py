@@ -4,8 +4,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings:
-    # Database Configuration - Railway akan provide DATABASE_URL
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/secret_chat")
+    # Database Configuration - Default to SQLite
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///secret_chat.db")
     
     # JWT Configuration
     JWT_SECRET: str = os.getenv("JWT_SECRET", "your-super-secret-jwt-key-change-in-production")
