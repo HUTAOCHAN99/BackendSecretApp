@@ -1,6 +1,7 @@
 # python_backend/app/database/database.py
 import os
 import logging
+from contextlib import asynccontextmanager
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
